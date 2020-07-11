@@ -1,48 +1,22 @@
 defmodule ResuelveAuth.AuthPlug do
   @moduledoc """
-  Plug para autenticacion mediante verificacion de firma de tokens.
+  Plug for authentication using token signature verification.
 
-  Valores por defecto:
+  | Option  | Description | Default value |
+  | ------- | ----------- | ------------- |
+  | limit_time | time in hours | 168 h (1 w) |
+  | secret  | Secret key | empty  |
+  | handler | Error handler function | ResuelveAuth.Sample.AuthHandler |
 
-  - limit_time: 1 semana en horas
-  - secret:     llave para generar el token vacio, también puede ser una función con aridad 0
-  - handler:    Módulo de ejemplo para responder errores
+  ## Example
 
-  ## Ejemplo:
-
-  ```exlir
-
-  # En el archivo router.ex
-  defmodule MyApi.Router do
-
-    # Se usan 10 horas como vigencia del token y
-    # se toma el comportamiento por defecto del handler.
-    @options [secret: "mi-llave-secreta", limit_time: 10]
-    use MyApi, :router
-
-    pipeline :auth do
-      plug ResuelveAuth.AuthPlug, @options
-    end
-
-    scope "/v1", MyApi do
-      pipe_through([:auth])
-      ..
-      post("/users/", UserController, :create)
-    end
-  end
-
-  ```
-
-  ## Ejemplo con una función como secret
-
-  ```exlir
+  ```elixir
 
   # En el archivo router.ex
   defmodule MyApi.Router do
 
-    # Se usan 10 horas como vigencia del token y
-    # se toma el comportamiento por defecto del handler.
-    @options [secret: &MyAuth.get_secret/0, limit_time: 10]
+    # Using 10 hours as limit and default error handler
+    @options [secret: "my-secret-key", limit_time: 10]
     use MyApi, :router
 
     pipeline :auth do
@@ -73,11 +47,7 @@ defmodule ResuelveAuth.AuthPlug do
 
   @impl Plug
   def init(options) do
-    secret = infer_secret(options[:secret])
-
-    @default
-    |> Keyword.merge(options)
-    |> Keyword.merge(secret: secret)
+    Keyword.merge(@default, options)
   end
 
   @impl Plug
@@ -93,8 +63,4 @@ defmodule ResuelveAuth.AuthPlug do
         options[:handler].errors(conn, "Unauthorized")
     end
   end
-
-  @spec infer_secret(String.t() | function) :: String.t()
-  defp infer_secret(value) when is_binary(value), do: value
-  defp infer_secret(value) when is_function(value), do: apply(value, [])
 end
